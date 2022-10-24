@@ -1,53 +1,17 @@
 package ru.reosfire.temporarywhitelist.Lib.Sql;
 
-import java.sql.*;
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.SQLException;
 
-public class SqlConnection
-{
-    private final ISqlConfiguration configuration;
-    private Connection connection = null;
+public class SqlConnection {
+	private final ISqlConfiguration configuration;
 
-    public SqlConnection(ISqlConfiguration config) throws SQLException
-    {
-        configuration = config;
-        Open();
-    }
+	public SqlConnection(ISqlConfiguration config) {
+		configuration = config;
+	}
 
-    private void Open() throws SQLException
-    {
-        synchronized (this)
-        {
-            if (connection != null && !connection.isClosed() && isConnectionAlive()) return;
-
-            try
-            {
-                configuration.CheckRequirements();
-            }
-            catch (SqlRequirementsNotSatisfiedException e)
-            {
-                throw new SQLException(e);
-            }
-            connection = DriverManager.getConnection(configuration.getConnectionString(), configuration.getUser(),
-                    configuration.getPassword());
-        }
-    }
-
-    private boolean isConnectionAlive()
-    {
-        try
-        {
-            connection.createStatement().executeQuery("SELECT 1;");
-            return true;
-        }
-        catch (SQLException e)
-        {
-            return false;
-        }
-    }
-
-    public Connection getConnection() throws SQLException
-    {
-        Open();
-        return connection;
-    }
+	public Connection getConnection() throws SQLException {
+		return DriverManager.getConnection(configuration.getConnectionString(), configuration.getUser(), configuration.getPassword());
+	}
 }

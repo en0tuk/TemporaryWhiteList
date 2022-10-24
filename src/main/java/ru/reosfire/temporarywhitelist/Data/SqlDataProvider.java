@@ -3,10 +3,7 @@ package ru.reosfire.temporarywhitelist.Data;
 import ru.reosfire.temporarywhitelist.Configuration.Config;
 import ru.reosfire.temporarywhitelist.Lib.Sql.SqlConnection;
 
-import java.sql.PreparedStatement;
-import java.sql.ResultSet;
-import java.sql.SQLException;
-import java.sql.Statement;
+import java.sql.*;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
@@ -27,7 +24,7 @@ public class SqlDataProvider implements IDataProvider
                 "Permanent BOOLEAN NOT NULL, " +
                 "LastStartTime BIGINT NOT NULL, " +
                 "TimeAmount BIGINT NOT NULL);";
-        try (Statement statement = sqlconnection.getConnection().createStatement())
+        try (Connection conn = sqlconnection.getConnection(); Statement statement = conn.createStatement())
         {
             statement.executeUpdate(createTableString);
         }
@@ -41,7 +38,7 @@ public class SqlDataProvider implements IDataProvider
             String setRequest = "INSERT INTO " + configuration.SqlTable + " (Player, Permanent, LastStartTime, " +
                     "TimeAmount)" + "VALUES (?, ?, ?, ?) ON DUPLICATE KEY UPDATE Permanent=?, LastStartTime=?, " +
                     "TimeAmount=?;";
-            try (PreparedStatement statement = sqlconnection.getConnection().prepareStatement(setRequest))
+            try (Connection conn = sqlconnection.getConnection(); PreparedStatement statement = conn.prepareStatement(setRequest))
             {
                 statement.setString(1, playerData.Name);
                 statement.setBoolean(2, playerData.Permanent);
@@ -66,7 +63,7 @@ public class SqlDataProvider implements IDataProvider
         return CompletableFuture.runAsync(() ->
         {
             String removeRequest = "DELETE FROM " + configuration.SqlTable + " WHERE Player=?;";
-            try(PreparedStatement statement = sqlconnection.getConnection().prepareStatement(removeRequest))
+            try(Connection conn = sqlconnection.getConnection(); PreparedStatement statement = conn.prepareStatement(removeRequest))
             {
                 statement.setString(1, playerName);
                 statement.executeUpdate();
@@ -82,12 +79,13 @@ public class SqlDataProvider implements IDataProvider
     public PlayerData get(String playerName)
     {
         String selectRequest = "SELECT * FROM " + configuration.SqlTable + " WHERE Player=?;";
-        try(PreparedStatement statement = sqlconnection.getConnection().prepareStatement(selectRequest))
+        try(Connection conn = sqlconnection.getConnection(); PreparedStatement statement = conn.prepareStatement(selectRequest))
         {
             statement.setString(1, playerName);
-            ResultSet player = statement.executeQuery();
-            if (!player.next()) return null;
-            return new PlayerData(player);
+            try (ResultSet player = statement.executeQuery()) {
+                if (!player.next()) return null;
+                return new PlayerData(player);
+            }
         }
         catch (Exception e)
         {
@@ -99,16 +97,16 @@ public class SqlDataProvider implements IDataProvider
     public List<PlayerData> getAll()
     {
         String selectRequest = "SELECT * FROM " + configuration.SqlTable + ";";
-        try (Statement statement = sqlconnection.getConnection().createStatement())
+        try (Connection conn = sqlconnection.getConnection(); Statement statement = conn.createStatement())
         {
             List<PlayerData> result = new ArrayList<>();
-            ResultSet resultSet = statement.executeQuery(selectRequest);
-
-            while (resultSet.next())
-            {
-                result.add(new PlayerData(resultSet));
+            try (ResultSet resultSet = statement.executeQuery(selectRequest)) {
+                while (resultSet.next())
+                {
+                    result.add(new PlayerData(resultSet));
+                }
+                return result;
             }
-            return result;
         }
         catch (Exception e)
         {
